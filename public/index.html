@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cert-Ease - Claim Your Certificate</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="hero">
+        <div class="container">
+            <h1>Cert-Ease</h1>
+            <p>Enter your details below to download your personalized event certificate.</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="card animate-fade" style="max-width: 500px; margin: -4rem auto 0;">
+            <form id="claimForm">
+                <div class="form-group">
+                    <label for="eventSelect">Select Event</label>
+                    <select id="eventSelect" required>
+                        <option value="" disabled selected>Choose an event</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="identifier">Email or Registration ID</label>
+                    <input type="text" id="identifier" placeholder="e.g. john@example.com" required>
+                </div>
+                <button type="submit" id="submitBtn">
+                    <div class="spinner"></div>
+                    <span>Verify & Download</span>
+                </button>
+            </form>
+            <div id="statusMsg" class="status-msg hidden"></div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2026 CertEase. Created by <strong>Aditya Karanjekar</strong></p>
+    </footer>
+
+    <div id="toastContainer"></div>
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+name,email,regid,present
+John Doe,john@example.com,REG001,1
+Jane Smith,jane@example.com,REG002,1
+Bob Wilson,bob@example.com,REG003,0

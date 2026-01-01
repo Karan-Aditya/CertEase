@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cert-Ease Admin - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="loginSection" class="container" style="max-width: 400px; margin-top: 10vh;">
+        <div class="card animate-fade">
+            <h2 class="text-center" style="margin-bottom: 2rem;">Cert-Ease Admin</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" id="loginBtn">
+                    <div class="spinner"></div>
+                    <span>Login</span>
+                </button>
+            </form>
+            <div id="loginStatus" class="status-msg hidden"></div>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboardSection" class="admin-container hidden">
+        <aside class="sidebar">
+            <h2>Cert-Ease</h2>
+            <ul class="sidebar-nav">
+                <li class="active" data-section="uploadTemplate">Upload Template</li>
+                <li data-section="uploadAttendance">Upload Attendance</li>
+                <li data-section="viewData">View Data</li>
+                <li id="logoutBtn" style="margin-top: 2rem; color: var(--error);">Logout</li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <!-- Section: Upload Template -->
+            <section id="uploadTemplateSection" class="animate-fade">
+                <h3>Upload Certificate Template</h3>
+                <div class="card mt-4">
+                    <form id="templateForm">
+                        <div class="form-group">
+                            <label>Event ID (e.g. Workshop2025)</label>
+                            <input type="text" name="event_id" required>
+                        </div>
+                        <div class="form-group">
+                            <label>PDF Template</label>
+                            <input type="file" name="template" accept=".pdf" required>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Name X-Coordinate (-1 for Center)</label>
+                                <input type="number" name="name_x" value="-1" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Name Y-Coordinate</label>
+                                <input type="number" name="name_y" value="285" required>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Font Size</label>
+                                <input type="number" name="font_size" value="30" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Page Index (0-based)</label>
+                                <input type="number" name="page_index" value="0" required>
+                            </div>
+                        </div>
+                        <button type="submit">
+                            <div class="spinner"></div>
+                            <span>Upload Template</span>
+                        </button>
+                    </form>
+                    <div id="templateStatus" class="status-msg hidden"></div>
+                </div>
+            </section>
+
+            <!-- Section: Upload Attendance -->
+            <section id="uploadAttendanceSection" class="animate-fade hidden">
+                <h3>Upload Attendance CSV</h3>
+                <div class="card mt-4">
+                    <form id="attendanceForm">
+                        <div class="form-group">
+                            <label>Event ID</label>
+                            <select name="event_id" id="attendanceEventSelect" required>
+                                <option value="">Select an Event</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>CSV File (Columns: name,email,regid,present)</label>
+                            <input type="file" name="attendance" accept=".csv" required>
+                        </div>
+                        <button type="submit">
+                            <div class="spinner"></div>
+                            <span>Upload CSV</span>
+                        </button>
+                    </form>
+                    <div id="attendanceStatus" class="status-msg hidden"></div>
+                </div>
+            </section>
+
+            <!-- Section: View Data -->
+            <section id="viewDataSection" class="animate-fade hidden">
+                <h3>Attendance Records</h3>
+                <div class="card mt-4">
+                    <div class="form-group" style="display: flex; gap: 1rem; align-items: flex-end;">
+                        <div style="flex-grow: 1;">
+                            <label>Filter by Event ID</label>
+                            <select id="filterEventSelect">
+                                <option value="">Select an Event</option>
+                            </select>
+                        </div>
+                        <button id="deleteEventBtn" class="btn-sm" style="background: var(--error); margin-bottom: 0.5rem; height: 38px; display: none;" title="Delete Event">🗑️</button>
+                    </div>
+                    <div id="bulkActions" style="margin-bottom: 1rem; display: none;">
+                        <button id="deleteAllSelectedBtn" class="btn-sm" style="background: var(--error);" title="Delete Selected">🗑️ Delete Selected</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table id="attendanceTable">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="selectAll"></th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Reg ID</th>
+                                    <th>Present</th>
+                                    <th>Certificate ID</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2026 Cert-Ease. Created by <strong>Aditya Karanjekar</strong></p>
+    </footer>
+
+    <div id="toastContainer"></div>
+    <script src="js/admin.js"></script>
+</body>
+</html>
