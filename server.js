@@ -11,6 +11,9 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for Render/proxies to handle secure cookies correctly
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -27,10 +30,13 @@ app.use(session({
         db: 'sessions.sqlite'
     }),
     secret: process.env.SESSION_SECRET || 'certify-secret-key',
-    resave: false,
-    saveUninitialized: false, // Recommended for persistent stores
+    resave: true, // Force session to be saved back to the store
+    saveUninitialized: false, 
+    proxy: true, // Required for secure cookies behind a proxy
     cookie: { 
         secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax',
         maxAge: 1000 * 60 * 60 * 24 // 24 hours
     } 
 }));
@@ -62,10 +68,10 @@ const upload = multer({ storage });
 
 // Admin Auth Middleware
 const isAdmin = (req, res, next) => {
-    if (req.session.isAdmin) {
+    if (req.session && req.session.isAdmin) {
         next();
     } else {
-        console.log('Unauthorized access attempt - session.isAdmin:', req.session.isAdmin);
+        console.log(`Unauthorized access attempt - sessionID: ${req.sessionID}, isAdmin: ${req.session ? req.session.isAdmin : 'no session'}`);
         res.status(401).json({ error: 'Session expired or unauthorized. Please log in again.' });
     }
 };
