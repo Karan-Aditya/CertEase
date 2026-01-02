@@ -21,10 +21,28 @@ app.use(session({
     cookie: { secure: process.env.NODE_ENV === 'production' } 
 }));
 
+// Ensure directories exist
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const TEMPLATES_DIR = path.join(DATA_DIR, 'templates');
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+
+try {
+    if (!fs.existsSync(TEMPLATES_DIR)) {
+        fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
+        console.log(`Created templates directory at: ${TEMPLATES_DIR}`);
+    }
+    if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+        console.log(`Created uploads directory at: ${UPLOADS_DIR}`);
+    }
+} catch (err) {
+    console.error('Error creating data directories:', err.message);
+}
+
 // Multer Storage Setup
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const dir = file.fieldname === 'template' ? 'templates' : 'uploads';
+        const dir = file.fieldname === 'template' ? TEMPLATES_DIR : UPLOADS_DIR;
         cb(null, dir);
     },
     filename: (req, file, cb) => {

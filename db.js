@@ -1,13 +1,25 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-// Use persistent disk on Render in production
-const dbPath =
-  process.env.NODE_ENV === 'production'
-    ? '/data/data.sqlite'
-    : path.join(__dirname, 'data.sqlite');
+// Use DB_PATH environment variable if provided, otherwise default to local file
+const dbPath = process.env.DB_PATH || path.join(__dirname, 'data.sqlite');
 
-const db = new sqlite3.Database(dbPath);
+// Ensure directory exists (important if DB_PATH is set to a subdirectory)
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+console.log(`Initializing database at: ${dbPath}`);
+
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('CRITICAL: Failed to open database!', err.message);
+    process.exit(1);
+  }
+  console.log('Successfully connected to the database.');
+});
 
 // Create tables if not exist
 db.serialize(() => {
@@ -21,7 +33,9 @@ db.serialize(() => {
       present INTEGER,
       certificate_id TEXT
     )
-  `);
+  `, (err) => {
+    if (err) console.error('Error creating attendees table:', err.message);
+  });
 
   db.run(`
     CREATE TABLE IF NOT EXISTS templates (
@@ -32,7 +46,9 @@ db.serialize(() => {
       font_size REAL,
       page_index INTEGER
     )
-  `);
+  `, (err) => {
+    if (err) console.error('Error creating templates table:', err.message);
+  });
 });
 
 module.exports = db;
