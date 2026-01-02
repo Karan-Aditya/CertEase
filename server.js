@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -14,17 +15,25 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'certify-secret-key',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: process.env.NODE_ENV === 'production' } 
-}));
-
 // Ensure directories exist
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 const TEMPLATES_DIR = path.join(DATA_DIR, 'templates');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+
+// Session configuration
+app.use(session({
+    store: new SQLiteStore({
+        dir: DATA_DIR,
+        db: 'sessions.sqlite'
+    }),
+    secret: process.env.SESSION_SECRET || 'certify-secret-key',
+    resave: false,
+    saveUninitialized: false, // Recommended for persistent stores
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 1000 * 60 * 60 * 24 // 24 hours
+    } 
+}));
 
 try {
     if (!fs.existsSync(TEMPLATES_DIR)) {
@@ -64,6 +73,10 @@ const isAdmin = (req, res, next) => {
 // --- ROUTES ---
 
 // Admin Login
+app.get('/api/check-auth', (req, res) => {
+    res.json({ isAdmin: !!req.session.isAdmin });
+});
+
 app.post('/admin/login', (req, res) => {
     const { username, password } = req.body;
     const ADMIN_USER = process.env.ADMIN_USER || 'admin';
