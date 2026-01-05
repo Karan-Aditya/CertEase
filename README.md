@@ -43,10 +43,6 @@ CertEase is a powerful, lightweight Node.js-based web application designed for a
 
 ### Admin Access
 -   Go to `/admin.html`.
--   **Default Credentials**: 
-    -   Username: `admin`
-    -   Password: `admin123`
-    -   *(Credentials can be configured via environment variables `ADMIN_USER` and `ADMIN_PASS`)*
 
 ### Uploading a Template
 1.  Navigate to **Upload Template**.
