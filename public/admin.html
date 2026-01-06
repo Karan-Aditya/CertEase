@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <button class="theme-toggle" id="themeToggle" title="Toggle Light/Dark Mode">
+        <span class="icon">🌓</span>
+    </button>
     <!-- Login Section -->
     <div id="loginSection" class="container" style="max-width: 400px; margin-top: 10vh;">
         <div class="card animate-fade">
@@ -42,6 +45,29 @@
         </aside>
 
         <main class="main-content">
+            <!-- Global Stats Header -->
+            <section id="globalStats" class="animate-fade" style="margin-bottom: 3rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 2rem;">
+                <h3>System Overview</h3>
+                <div class="stats-grid mt-4">
+                    <div class="card stat-card">
+                        <span class="stat-label">Total Events</span>
+                        <h2 id="statTotalEvents">0</h2>
+                    </div>
+                    <div class="card stat-card">
+                        <span class="stat-label">Total Attendees</span>
+                        <h2 id="statTotalAttendees">0</h2>
+                    </div>
+                    <div class="card stat-card">
+                        <span class="stat-label">Eligible for Cert</span>
+                        <h2 id="statTotalEligible">0</h2>
+                    </div>
+                    <div class="card stat-card">
+                        <span class="stat-label">Certificates Claimed</span>
+                        <h2 id="statTotalClaimed">0</h2>
+                    </div>
+                </div>
+            </section>
+
             <!-- Section: Upload Template -->
             <section id="uploadTemplateSection" class="animate-fade">
                 <h3>Upload Certificate Template</h3>
@@ -75,12 +101,22 @@
                                 <input type="number" name="page_index" value="0" required>
                             </div>
                         </div>
-                        <button type="submit">
-                            <div class="spinner"></div>
-                            <span>Upload Template</span>
-                        </button>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                            <button type="button" id="previewPlacementBtn" style="background: var(--primary);">
+                                <span>👁️ Preview Placement</span>
+                            </button>
+                            <button type="submit">
+                                <div class="spinner"></div>
+                                <span>Upload Template</span>
+                            </button>
+                        </div>
                     </form>
                     <div id="templateStatus" class="status-msg hidden"></div>
+                </div>
+                <div id="templatePreviewContainer" class="card mt-4 hidden">
+                    <h3>Template Preview</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Note: This is a preview using the name "John Doe" to test coordinates.</p>
+                    <iframe id="templatePreviewFrame" style="width: 100%; height: 500px; border-radius: 0.75rem; border: 1px solid var(--glass-border);"></iframe>
                 </div>
             </section>
 

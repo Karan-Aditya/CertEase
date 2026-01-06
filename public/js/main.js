@@ -17,9 +17,30 @@ const Toast = {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Theme Logic
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
+    const currentTheme = localStorage.getItem('theme');
+
+    if (currentTheme === 'light') {
+        body.classList.add('light-theme');
+    }
+
+    themeToggle.addEventListener('click', () => {
+        body.classList.toggle('light-theme');
+        const theme = body.classList.contains('light-theme') ? 'light' : 'dark';
+        localStorage.setItem('theme', theme);
+    });
+
     const eventSelect = document.getElementById('eventSelect');
     const claimForm = document.getElementById('claimForm');
     const submitBtn = document.getElementById('submitBtn');
+    const resultActions = document.getElementById('resultActions');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let currentData = null;
 
     // Fetch available events
     try {
@@ -55,8 +76,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await res.json();
 
             if (res.ok) {
-                Toast.show('Verification successful! Downloading...');
-                window.location.href = `/api/download?event_id=${encodeURIComponent(event_id)}&identifier=${encodeURIComponent(identifier)}`;
+                Toast.show('Verification successful!');
+                currentData = { event_id, identifier };
+                claimForm.classList.add('hidden');
+                resultActions.classList.remove('hidden');
             } else {
                 Toast.show(data.error || 'User not found', 'error');
             }
@@ -66,5 +89,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             submitBtn.classList.remove('loading');
             submitBtn.disabled = false;
         }
+    });
+
+    downloadBtn.addEventListener('click', () => {
+        if (!currentData) return;
+        window.location.href = `/api/download?event_id=${encodeURIComponent(currentData.event_id)}&identifier=${encodeURIComponent(currentData.identifier)}`;
+    });
+
+    previewBtn.addEventListener('click', () => {
+        if (!currentData) return;
+        window.open(`/api/download?event_id=${encodeURIComponent(currentData.event_id)}&identifier=${encodeURIComponent(currentData.identifier)}&preview=true`, '_blank');
+    });
+
+    resetBtn.addEventListener('click', () => {
+        currentData = null;
+        claimForm.classList.remove('hidden');
+        resultActions.classList.add('hidden');
+        claimForm.reset();
     });
 });

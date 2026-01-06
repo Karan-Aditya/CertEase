@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <button class="theme-toggle" id="themeToggle" title="Toggle Light/Dark Mode">
+        <span class="icon">🌓</span>
+    </button>
     <header class="hero">
         <div class="container">
             <h1>Cert-Ease</h1>
@@ -32,6 +35,13 @@
                     <span>Verify & Download</span>
                 </button>
             </form>
+            <div id="resultActions" class="hidden mt-4">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <button id="downloadBtn" style="background: var(--success);">Download</button>
+                    <button id="previewBtn" style="background: var(--primary);">Preview</button>
+                </div>
+                <button id="resetBtn" class="btn-sm mt-4" style="background: transparent; color: var(--text-muted); border: 1px solid var(--glass-border); width: 100%;">Claim another</button>
+            </div>
             <div id="statusMsg" class="status-msg hidden"></div>
         </div>
     </main>

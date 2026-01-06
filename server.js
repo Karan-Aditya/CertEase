@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -10,21 +11,67 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for Render/proxies to handle secure cookies correctly
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// DB Migration: Add claimed column if it doesn't exist
+db.run("ALTER TABLE attendees ADD COLUMN claimed INTEGER DEFAULT 0", (err) => {
+    if (err) {
+        if (err.message.includes("duplicate column name")) {
+            // Column already exists, ignore
+        } else {
+            console.error("Migration Error:", err.message);
+        }
+    } else {
+        console.log("Migration: Added 'claimed' column to attendees table.");
+    }
+});
+
+// Ensure directories exist
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const TEMPLATES_DIR = path.join(DATA_DIR, 'templates');
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+
+// Session configuration
 app.use(session({
+    store: new SQLiteStore({
+        dir: DATA_DIR,
+        db: 'sessions.sqlite'
+    }),
     secret: process.env.SESSION_SECRET || 'certify-secret-key',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: process.env.NODE_ENV === 'production' } 
+    resave: true, // Force session to be saved back to the store
+    saveUninitialized: false, 
+    proxy: true, // Required for secure cookies behind a proxy
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 1000 * 60 * 60 * 24 // 24 hours
+    } 
 }));
+
+try {
+    if (!fs.existsSync(TEMPLATES_DIR)) {
+        fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
+        console.log(`Created templates directory at: ${TEMPLATES_DIR}`);
+    }
+    if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+        console.log(`Created uploads directory at: ${UPLOADS_DIR}`);
+    }
+} catch (err) {
+    console.error('Error creating data directories:', err.message);
+}
 
 // Multer Storage Setup
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const dir = file.fieldname === 'template' ? 'templates' : 'uploads';
+        const dir = file.fieldname === 'template' ? TEMPLATES_DIR : UPLOADS_DIR;
         cb(null, dir);
     },
     filename: (req, file, cb) => {
@@ -35,10 +82,10 @@ const upload = multer({ storage });
 
 // Admin Auth Middleware
 const isAdmin = (req, res, next) => {
-    if (req.session.isAdmin) {
+    if (req.session && req.session.isAdmin) {
         next();
     } else {
-        console.log('Unauthorized access attempt - session.isAdmin:', req.session.isAdmin);
+        console.log(`Unauthorized access attempt - sessionID: ${req.sessionID}, isAdmin: ${req.session ? req.session.isAdmin : 'no session'}`);
         res.status(401).json({ error: 'Session expired or unauthorized. Please log in again.' });
     }
 };
@@ -46,10 +93,14 @@ const isAdmin = (req, res, next) => {
 // --- ROUTES ---
 
 // Admin Login
+app.get('/api/check-auth', (req, res) => {
+    res.json({ isAdmin: !!req.session.isAdmin });
+});
+
 app.post('/admin/login', (req, res) => {
     const { username, password } = req.body;
-    const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-    const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
+    const ADMIN_USER = process.env.ADMIN_USER || 'Aditya';
+    const ADMIN_PASS = process.env.ADMIN_PASS || 'AdityaK@18';
 
     if (username === ADMIN_USER && password === ADMIN_PASS) {
         req.session.isAdmin = true;
@@ -63,6 +114,65 @@ app.post('/admin/login', (req, res) => {
 app.post('/admin/logout', (req, res) => {
     req.session.destroy();
     res.json({ success: true });
+});
+
+// Preview Template Placement
+app.post('/admin/preview-template', isAdmin, (req, res) => {
+    upload.single('template')(req, res, async (err) => {
+        if (err) return res.status(400).json({ error: 'Upload Error: ' + err.message });
+        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+        const { name_x, name_y, font_size, page_index } = req.body;
+        
+        // Basic validation
+        if (!name_x || !name_y || !font_size) {
+            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            return res.status(400).json({ error: 'Missing required coordinates or font size' });
+        }
+
+        const testName = "test name";
+
+        try {
+            const existingPdfBytes = fs.readFileSync(req.file.path);
+            const pdfDoc = await PDFDocument.load(existingPdfBytes);
+            const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+            const pages = pdfDoc.getPages();
+            const pIndex = parseInt(page_index) || 0;
+
+            if (pIndex < 0 || pIndex >= pages.length) {
+                if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                return res.status(400).json({ error: `Invalid page index. Total pages: ${pages.length}` });
+            }
+
+            const page = pages[pIndex];
+            const { width } = page.getSize();
+
+            let xPos = parseFloat(name_x);
+            if (xPos === -1) {
+                const textWidth = font.widthOfTextAtSize(testName, parseInt(font_size));
+                xPos = (width - textWidth) / 2;
+            }
+
+            page.drawText(testName, {
+                x: xPos,
+                y: parseFloat(name_y),
+                size: parseInt(font_size),
+                font: font,
+                color: rgb(0, 0, 0),
+            });
+
+            const pdfBytes = await pdfDoc.save();
+            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); // Delete temp file
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'inline; filename=preview.pdf');
+            res.send(Buffer.from(pdfBytes));
+        } catch (error) {
+            if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            console.error('Preview error:', error);
+            res.status(500).json({ error: 'PDF Processing Error: ' + error.message });
+        }
+    });
 });
 
 // Upload Template
@@ -190,6 +300,26 @@ app.get('/api/events', (req, res) => {
     });
 });
 
+// Admin Stats
+app.get('/admin/stats', isAdmin, (req, res) => {
+    const stats = {};
+    db.serialize(() => {
+        db.get(`SELECT COUNT(*) as count FROM templates`, (err, row) => {
+            stats.totalEvents = row.count;
+        });
+        db.get(`SELECT COUNT(*) as count FROM attendees`, (err, row) => {
+            stats.totalAttendees = row.count;
+        });
+        db.get(`SELECT COUNT(*) as count FROM attendees WHERE present = 1`, (err, row) => {
+            stats.totalEligible = row.count;
+        });
+        db.get(`SELECT COUNT(*) as count FROM attendees WHERE claimed = 1`, (err, row) => {
+            stats.totalClaimed = row.count;
+            res.json(stats);
+        });
+    });
+});
+
 // Verify User and Download
 app.post('/api/verify', (req, res) => {
     const { identifier, event_id } = req.body; // identifier is email or regid
@@ -235,7 +365,14 @@ app.get('/api/download', async (req, res) => {
 
             const pdfBytes = await pdfDoc.save();
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename=certificate_${data.regid}.pdf`);
+            const fileName = `certificate_${data.regid}.pdf`;
+            if (req.query.preview === 'true') {
+                res.setHeader('Content-Disposition', `inline; filename=${fileName}`);
+            } else {
+                res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+                // Mark as claimed if not a preview
+                db.run(`UPDATE attendees SET claimed = 1 WHERE id = ?`, [data.id]);
+            }
             res.send(Buffer.from(pdfBytes));
         } catch (error) {
             console.error(error);

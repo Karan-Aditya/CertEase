@@ -17,6 +17,21 @@ const Toast = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Theme Logic
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
+    const currentTheme = localStorage.getItem('theme');
+
+    if (currentTheme === 'light') {
+        body.classList.add('light-theme');
+    }
+
+    themeToggle.addEventListener('click', () => {
+        body.classList.toggle('light-theme');
+        const theme = body.classList.contains('light-theme') ? 'light' : 'dark';
+        localStorage.setItem('theme', theme);
+    });
+
     const loginSection = document.getElementById('loginSection');
     const dashboardSection = document.getElementById('dashboardSection');
     const loginForm = document.getElementById('loginForm');
@@ -28,6 +43,21 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadTemplate: document.getElementById('uploadTemplateSection'),
         uploadAttendance: document.getElementById('uploadAttendanceSection'),
         viewData: document.getElementById('viewDataSection')
+    };
+
+    const fetchStats = async () => {
+        try {
+            const res = await fetch('/admin/stats');
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('statTotalEvents').textContent = data.totalEvents;
+                document.getElementById('statTotalAttendees').textContent = data.totalAttendees;
+                document.getElementById('statTotalEligible').textContent = data.totalEligible;
+                document.getElementById('statTotalClaimed').textContent = data.totalClaimed;
+            }
+        } catch (err) {
+            console.error('Failed to fetch stats', err);
+        }
     };
 
     const fetchEvents = async () => {
@@ -65,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Object.values(sections).forEach(s => s.classList.add('hidden'));
             sections[target].classList.remove('hidden');
 
+            fetchStats();
             if (target === 'viewData' || target === 'uploadAttendance') fetchEvents();
             if (target === 'viewData') loadAttendanceData(document.getElementById('filterEventSelect').value);
         });
@@ -91,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dashboardSection.classList.remove('hidden');
                 localStorage.setItem('isAdmin', 'true');
                 Toast.show('Welcome back, Admin!');
+                fetchStats();
             } else {
                 Toast.show('Invalid credentials', 'error');
             }
@@ -110,7 +142,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Template Upload
-    document.getElementById('templateForm').addEventListener('submit', async (e) => {
+    const templateForm = document.getElementById('templateForm');
+    const previewPlacementBtn = document.getElementById('previewPlacementBtn');
+    const templatePreviewContainer = document.getElementById('templatePreviewContainer');
+    const templatePreviewFrame = document.getElementById('templatePreviewFrame');
+
+    previewPlacementBtn.addEventListener('click', async () => {
+        const formData = new FormData(templateForm);
+        const fileInput = templateForm.querySelector('input[type="file"]');
+        
+        if (!fileInput.files || !fileInput.files[0]) {
+            return Toast.show('Please select a PDF file first', 'error');
+        }
+
+        try {
+            previewPlacementBtn.disabled = true;
+            const res = await fetch('/admin/preview-template', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                templatePreviewFrame.src = url;
+                templatePreviewContainer.classList.remove('hidden');
+                Toast.show('Preview updated');
+            } else {
+                let errorMsg = 'Preview failed';
+                try {
+                    const data = await res.json();
+                    errorMsg = data.error || errorMsg;
+                } catch (e) {
+                    errorMsg = `Server error: ${res.status} ${res.statusText}`;
+                }
+                Toast.show(errorMsg, 'error');
+            }
+        } catch (err) {
+            console.error('Preview error:', err);
+            Toast.show('Connection error or invalid response', 'error');
+        } finally {
+            previewPlacementBtn.disabled = false;
+        }
+    });
+
+    templateForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
         const btn = e.target.querySelector('button[type="submit"]');
@@ -350,8 +426,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Persistence Check
-    if (localStorage.getItem('isAdmin') === 'true') {
-        loginSection.classList.add('hidden');
-        dashboardSection.classList.remove('hidden');
-    }
+    const checkAuth = async () => {
+        try {
+            const res = await fetch('/api/check-auth');
+            const data = await res.json();
+            if (data.isAdmin) {
+                loginSection.classList.add('hidden');
+                dashboardSection.classList.remove('hidden');
+                localStorage.setItem('isAdmin', 'true');
+                fetchStats();
+            } else {
+                localStorage.removeItem('isAdmin');
+                loginSection.classList.remove('hidden');
+                dashboardSection.classList.add('hidden');
+            }
+        } catch (err) {
+            console.error('Auth check failed', err);
+        }
+    };
+
+    checkAuth();
 });
